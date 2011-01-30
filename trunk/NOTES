@@ -1,0 +1,24 @@
+M1 : todo
+---------
+Rename Files
+    added
+    modified
+    uptodate
+    tracked-missing
+
+Revert
+Refresh
+Menu Options for different file states
+On file save
+On project Save
+
+M1 : done
+---------
+Commit.
+Add Files.
+GetStatus(FileNames)
+Remove Files
+    Up-to-date
+    Added
+    Modified
+    tracked-missing

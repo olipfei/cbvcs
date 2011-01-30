@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resource xmlns="http://www.wxwidgets.org/wxxrc">
+	<object class="wxScrollingDialog" name="CommitMsgDialog">
+		<title>ScrollingDialog</title>
+		<centered>1</centered>
+		<size>361,244</size>
+		<object class="wxButton" name="wxID_OK">
+			<pos>256,200</pos>
+			<size>-1,-1</size>
+		</object>
+		<object class="wxButton" name="wxID_CANCEL">
+			<pos>160,200</pos>
+		</object>
+		<object class="wxTextCtrl" name="ID_SUBJECT">
+			<maxlength>50</maxlength>
+			<pos>16,24</pos>
+			<size>328,27</size>
+		</object>
+		<object class="wxTextCtrl" name="ID_DETAILS">
+			<pos>16,80</pos>
+			<size>320,112</size>
+			<style>wxTE_MULTILINE</style>
+		</object>
+	</object>
+</resource>
