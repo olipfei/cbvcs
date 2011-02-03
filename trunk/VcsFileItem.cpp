@@ -2,7 +2,7 @@
 #include "VcsFileItem.h"
 
 VcsFileItem::VcsFileItem(ProjectFile* PrjFile) :
-    VcsTreeItem(PrjFile->relativeFilename, (ItemState) PrjFile->GetFileState()), m_PrjFile(PrjFile)
+    VcsTreeItem(PrjFile->file.GetFullPath(), (ItemState) PrjFile->GetFileState()), m_PrjFile(PrjFile)
 {
     //ctor
 }

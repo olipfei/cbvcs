@@ -1,14 +1,16 @@
 #include <sdk.h> // Code::Blocks SDK
 #include <configurationpanel.h>
 #include <cbproject.h>
+#include <cbeditor.h>
 #include <projectmanager.h>
 #include <cbfunctor.h>
 #include <logmanager.h>
 
 #include "cbvcs.h"
-#include "git.h"
+#include "IVersionControlSystem.h"
 #include "VcsFileItem.h"
 #include "VcsProject.h"
+#include "vcsfactory.h"
 
 // Register the plugin with Code::Blocks.
 // We are using an anonymous namespace so we don't litter the global one.
@@ -64,6 +66,7 @@ void cbvcs::OnAttach()
     // (see: does not need) this plugin...
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_OPEN, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnProjectOpen));
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_CLOSE, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnProjectClose));
+    Manager::Get()->RegisterEventSink(cbEVT_EDITOR_SAVE, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnEditorSave));
 }
 
 void cbvcs::OnRelease(bool appShutDown)
@@ -100,7 +103,7 @@ void cbvcs::BuildMenu(wxMenuBar* menuBar)
 
 void cbvcs::CreateProjectMenu(wxMenu* menu, const FileTreeData* data)
 {
-    wxMenu* svn = new wxMenu(_("Svn"));
+    wxMenu* VcsMenu = new wxMenu(_("Git"));
 
     wxMenu* branch = new wxMenu(_("Branch"));
     branch->Append(idBranchCreate, _("Create"), _("Create branch"));
@@ -111,51 +114,66 @@ void cbvcs::CreateProjectMenu(wxMenu* menu, const FileTreeData* data)
     tag->Append(idTagCreate, _("Create"), _("Create a new tag"));
     tag->Append(idTagCheckout, _("Checkout"), _("Checkout a tag"));
 
-    svn->Append(idCommit, _("Commit"), _("Commit this file"));
-    svn->Append(idRevert, _("Revert"), _("Revert changes"));
+    VcsMenu->Append(idCommit, _("Commit"), _("Commit this file"));
+    VcsMenu->Append(idRevert, _("Revert"), _("Revert changes"));
 
-    svn->AppendSubMenu(branch, _("Branch"));
-    svn->AppendSubMenu(tag, _("Tag"));
-    menu->AppendSubMenu(svn, _("Svn"));
+    VcsMenu->AppendSubMenu(branch, _("Branch"));
+    VcsMenu->AppendSubMenu(tag, _("Tag"));
+    menu->AppendSubMenu(VcsMenu, _("Git"));
 }
 
 void cbvcs::CreateFolderMenu(wxMenu* menu)
 {
-    wxMenu* svn = new wxMenu(_("Svn"));
+    wxMenu* VcsMenu = new wxMenu(_("Git"));
 
-    svn->Append(idAdd, _("Add"), _("Add this file"));
-    svn->Append(idRemove, _("Remove"), _("Remove this file"));
-    svn->Append(idRename, _("Rename"), _("Rename this file"));
-    svn->Append(idCommit, _("Commit"), _("Commit this file"));
-    svn->Append(idRevert, _("Revert"), _("Revert changes"));
+    VcsMenu->Append(idAdd, _("Add"), _("Add this file"));
+    VcsMenu->Append(idRemove, _("Remove"), _("Remove this file"));
+    VcsMenu->Append(idCommit, _("Commit"), _("Commit this file"));
+    VcsMenu->Append(idRevert, _("Revert"), _("Revert changes"));
 
-    menu->AppendSubMenu(svn, _("Svn"));
+    menu->AppendSubMenu(VcsMenu, _("Git"));
 }
 
 void cbvcs::CreateFileMenu(wxMenu* menu, const FileTreeData* data)
 {
     ProjectFile* file = data->GetProjectFile();
 
-    if(file->GetFileState() == fvsVcNonControlled)
+    if(file->GetFileState() == (FileVisualState)Item_UntrackedMissing )
     {
         return;
     }
 
-    wxMenu* svn = new wxMenu(_("Svn"));
+    wxMenu* VcsMenu = new wxMenu(_("Git"));
 
-    if(file->GetFileState() == fvsNormal )
+    if(file->GetFileState() == (FileVisualState)Item_Untracked )
     {
-        svn->Append(idAdd, _("Add"), _("Add this file"));
+        VcsMenu->Append(idAdd, _("Add"), _("Add this file"));
     }
-    else
+    else if(file->GetFileState() == (FileVisualState)Item_Added
+       || file->GetFileState() == (FileVisualState)Item_Removed)
     {
-        svn->Append(idRemove, _("Remove"), _("Remove this file"));
-        svn->Append(idRename, _("Rename"), _("Rename this file"));
-        svn->Append(idCommit, _("Commit"), _("Commit this file"));
-        svn->Append(idRevert, _("Revert"), _("Revert changes"));
+        VcsMenu->Append(idCommit, _("Commit"), _("Commit this file"));
+        VcsMenu->Append(idRevert, _("Revert"), _("Revert changes"));
+    }
+    else if(file->GetFileState() == (FileVisualState)Item_UpToDate
+       || file->GetFileState() == (FileVisualState)Item_Modified)
+    {
+        VcsMenu->Append(idRemove, _("Remove"), _("Remove this file"));
+        VcsMenu->Append(idRename, _("Rename"), _("Rename this file"));
+
+        if(file->GetFileState() == (FileVisualState)Item_Modified)
+        {
+            VcsMenu->Append(idCommit, _("Commit"), _("Commit this file"));
+            VcsMenu->Append(idRevert, _("Revert"), _("Revert changes"));
+        }
+    }
+    else if(file->GetFileState() == (FileVisualState)Item_Missing)
+    {
+        VcsMenu->Append(idRemove, _("Remove"), _("Remove this file"));
+        VcsMenu->Append(idRevert, _("Revert"), _("Revert changes"));
     }
 
-    menu->AppendSubMenu(svn, _("Svn"));
+    menu->AppendSubMenu(VcsMenu, _("Git"));
 }
 
 void cbvcs::BuildModuleMenu(const ModuleType type, wxMenu* menu, const FileTreeData* data)
@@ -333,9 +351,7 @@ void cbvcs::PerformGroupAction(IVersionControlSystem& vcs,
     }
 
     vcs.UpdateOp.execute(files);
-    Manager::Get()->GetLogManager()->Log( _("Delete Items") );
     DeleteTreeItems(files);
-    Manager::Get()->GetLogManager()->Log( _("Group complete"));
 }
 
 void cbvcs::OnAdd( wxCommandEvent& /*event*/ )
@@ -419,7 +435,12 @@ void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
 
     if(it == m_ProjectVcs.end())
     {
-        vcs = new git(prj_file);
+        vcs = VcsFactory::GetVcs(prj_file);
+        if(!vcs)
+        {
+            Manager::Get()->GetLogManager()->Log( _("cbvcs: Project not controlled") );
+            return;
+        }
         m_ProjectVcs[prj_file] = vcs;
     }
     else
@@ -437,6 +458,7 @@ void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
     }
 
     vcs->UpdateOp.execute(files);
+    DeleteTreeItems(files);
 }
 
 void cbvcs::OnProjectClose( CodeBlocksEvent& event )
@@ -462,6 +484,52 @@ void cbvcs::OnProjectClose( CodeBlocksEvent& event )
         IVersionControlSystem* vcs = (*it).second;
         delete vcs;
         m_ProjectVcs.erase(it);
-        Manager::Get()->GetLogManager()->Log( _("git() successful removal") );
+        Manager::Get()->GetLogManager()->Log( _("vcs successful removal") );
+    }
+}
+
+void cbvcs::OnEditorSave( CodeBlocksEvent& event )
+{
+    cbEditor* ed = (cbEditor*) event.GetEditor();
+
+    if(!ed)
+    {
+        Manager::Get()->GetLogManager()->Log(_("Editor NULL"));
+        return;
+    }
+
+    cbProject* prj = Manager::Get()->GetProjectManager()->GetActiveProject();
+
+    if(!prj)
+    {
+        Manager::Get()->GetLogManager()->Log(_("Prj NULL"));
+        return;
+    }
+
+    ProjectFile* SavedFile = prj->GetFileByFilename(ed->GetFilename(), false, true);
+    if(!SavedFile)
+    {
+        // File not part of project. Just ignore
+        Manager::Get()->GetLogManager()->Log(ed->GetFilename() + _(" Not in project"));
+        return;
+    }
+
+    const wxString& PrjFilename = prj->GetFilename();
+
+    std::map<const wxString, IVersionControlSystem*>::iterator it
+        = m_ProjectVcs.find(PrjFilename);
+
+    if(it == m_ProjectVcs.end())
+    {
+        return;
+    }
+    else
+    {
+        std::vector<VcsTreeItem*>UpdateList;
+        IVersionControlSystem* vcs = (*it).second;
+
+        VcsFileItem vcsItem(SavedFile);
+        UpdateList.push_back(&vcsItem);
+        vcs->UpdateOp.execute(UpdateList);
     }
 }

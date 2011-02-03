@@ -10,6 +10,7 @@ git::git(const wxString& project) :
     m_GitRemove(*this),
     m_GitCommit(*this),
     m_GitRevert(*this),
+    m_GitRoot(wxPathOnly(project)),
     IVersionControlSystem(project, m_GitUpdate, m_GitAdd, m_GitRemove, m_GitCommit, m_GitRevert)
 {
     Manager::Get()->GetLogManager()->Log( _("git()") + project );
@@ -21,9 +22,25 @@ git::~git()
     //dtor
 }
 
-bool GitUpdateOp::IsOutsideRepo(const wxString& file) const
+/*static*/ bool git::IsGitRepo(const wxString& project)
 {
-    return (file.compare(0, 2, _(".."))) == 0;
+    wxString cwd = wxGetCwd();
+    wxString Command = _("git rev-parse --show-toplevel");
+    wxArrayString Output, Errors;
+
+    wxSetWorkingDirectory(wxPathOnly(project));
+    const long pid = wxExecute(Command, Output, Errors, wxEXEC_SYNC);
+
+    if (pid==-1)
+    {
+        wxString msg = _("Failed to execute" + Command);
+        cbMessageBox(msg, _("Error"), wxICON_ERROR | wxOK, Manager::Get()->GetAppWindow());
+        return false;
+    }
+
+    wxSetWorkingDirectory(cwd);
+
+    return Output.Count() != 0;
 }
 
 bool GitUpdateOp::SetStatusFromOutput(VcsTreeItem* Item, wxArrayString& Output) const
@@ -34,7 +51,14 @@ bool GitUpdateOp::SetStatusFromOutput(VcsTreeItem* Item, wxArrayString& Output) 
         wxString Name = Output[i].Mid(3);
 
         Manager::Get()->GetLogManager()->Log( _("  vcs:") + Name );
-        if(Item->GetName() == Name)
+
+        wxString relativeFilename = Item->GetRelativeName(GitRoot());
+        if(relativeFilename.length() == 0)
+        {
+            continue;
+        }
+
+        if(relativeFilename == Name)
         {
             if(Status == _(" M"))
             {
@@ -63,7 +87,7 @@ bool GitUpdateOp::SetStatusFromOutput(VcsTreeItem* Item, wxArrayString& Output) 
             Output.RemoveAt(i);
             return true;
         }
-        else if (Name.Right(1) == _("/") && Item->GetName().StartsWith(Name))
+        else if (Name.Right(1) == _("/") && relativeFilename.StartsWith(Name))
         {
             if(Status == _("??"))
             {
@@ -77,7 +101,7 @@ bool GitUpdateOp::SetStatusFromOutput(VcsTreeItem* Item, wxArrayString& Output) 
     return false;
 }
 
-void GitUpdateOp::ApplyStatus(std::vector<VcsTreeItem*> proj_files, wxArrayString Output) const
+void GitUpdateOp::ApplyStatus(std::vector<VcsTreeItem*>& proj_files, wxArrayString& Output) const
 {
     std::vector<VcsTreeItem*>::iterator fi;
 
@@ -86,19 +110,21 @@ void GitUpdateOp::ApplyStatus(std::vector<VcsTreeItem*> proj_files, wxArrayStrin
     for(fi = proj_files.begin(); fi != proj_files.end(); fi++)
     {
         VcsTreeItem* pf = *fi;
+        wxString relativeFilename;
 
-        if(IsOutsideRepo(pf->GetName()))
+        relativeFilename = pf->GetRelativeName(GitRoot());
+        if(relativeFilename.length() == 0)
         {
             continue;
         }
 
-        Manager::Get()->GetLogManager()->Log( _("prj:") + pf->GetName() );
+        Manager::Get()->GetLogManager()->Log( _("prj:") + relativeFilename );
 
         if(!SetStatusFromOutput(pf, Output))
         {
             // File not found in output list. It could either be missing (untracked) or
             // up-to-date
-            if(wxFileExists(pf->GetName()))
+            if(wxFileExists(relativeFilename))
             {
                 pf->SetState(Item_UpToDate);
                 Manager::Get()->GetLogManager()->Log( _("    (Up-to-date)") );
@@ -111,9 +137,10 @@ void GitUpdateOp::ApplyStatus(std::vector<VcsTreeItem*> proj_files, wxArrayStrin
         }
         pf->VisualiseState();
     }
+    Manager::Get()->GetLogManager()->Log( _("Apply Complete") );
 }
 
-void GitUpdateOp::execute(std::vector<VcsTreeItem*> paths) const
+void GitUpdateOp::execute(std::vector<VcsTreeItem*>& paths) const
 {
     wxString cwd = wxGetCwd();
     wxArrayString Output;
@@ -122,7 +149,7 @@ void GitUpdateOp::execute(std::vector<VcsTreeItem*> paths) const
     wxSetWorkingDirectory(cwd);
 }
 
-void GitAddOp::execute(std::vector<VcsTreeItem*> paths) const
+void GitAddOp::execute(std::vector<VcsTreeItem*>& paths) const
 {
     wxString path_string;
     std::vector<VcsTreeItem*>::const_iterator i;
@@ -130,9 +157,16 @@ void GitAddOp::execute(std::vector<VcsTreeItem*> paths) const
     for(i=paths.begin(); i!= paths.end(); i++)
     {
         VcsTreeItem* f = *i;
+
+        wxString relativeFilename = f->GetRelativeName(GitRoot());
+        if(relativeFilename.length() == 0)
+        {
+            continue;
+        }
+
         if(f->GetState() == Item_Untracked)
         {
-            path_string += _(" ") + f->GetName();
+            path_string += _(" ") + relativeFilename;
         }
     }
 
@@ -145,7 +179,7 @@ void GitAddOp::execute(std::vector<VcsTreeItem*> paths) const
     }
 }
 
-void GitRemoveOp::execute(std::vector<VcsTreeItem*> paths) const
+void GitRemoveOp::execute(std::vector<VcsTreeItem*>& paths) const
 {
     wxString UptodateFiles;
     wxString CachedFiles;
@@ -155,15 +189,22 @@ void GitRemoveOp::execute(std::vector<VcsTreeItem*> paths) const
     for(i=paths.begin(); i!= paths.end(); i++)
     {
         VcsTreeItem* Item = *i;
+
+        wxString relativeFilename = Item->GetRelativeName(GitRoot());
+        if(relativeFilename.length() == 0)
+        {
+            continue;
+        }
+
         if(Item->GetState() == Item_UpToDate
            || Item->GetState() == Item_Missing)
         {
-            UptodateFiles += _(" ") + Item->GetName();
+            UptodateFiles += _(" ") + relativeFilename;
         }
         else if(Item->GetState() == Item_Added
                 || Item->GetState() == Item_Modified)
         {
-            CachedFiles += _(" ") + Item->GetName();
+            CachedFiles += _(" ") + relativeFilename;
         }
     }
 
@@ -184,14 +225,18 @@ void GitRemoveOp::execute(std::vector<VcsTreeItem*> paths) const
 
 void GitCommitOp::AddCommitItem(wxArrayString& ItemList,VcsTreeItem* FileItem) const
 {
-    Manager::Get()->GetLogManager()->Log( FileItem->GetName() );
+    wxString relativeFilename = FileItem->GetRelativeName(GitRoot());
+
+    if(relativeFilename.length() == 0)
+    {
+        return;
+    }
 
     if(FileItem->GetState() == Item_Added
             || FileItem->GetState() == Item_Modified
             || FileItem->GetState() == Item_Removed)
     {
-        Manager::Get()->GetLogManager()->Log( _T("... adding") );
-        ItemList.Add(FileItem->GetName());
+        ItemList.Add(relativeFilename);
     }
 }
 
@@ -207,12 +252,10 @@ wxString GitCommitOp::BuildCommitCmd(const wxString& CommitMsg, const wxArrayStr
     return Command;
 }
 
-void GitCommitOp::execute(std::vector<VcsTreeItem*> paths) const
+void GitCommitOp::execute(std::vector<VcsTreeItem*>& paths) const
 {
     wxString path_string;
     wxArrayString item_list;
-
-Manager::Get()->GetLogManager()->Log( _T("GIT COMMIT") );
 
     std::vector<VcsTreeItem*>::const_iterator i;
 
@@ -240,14 +283,19 @@ Manager::Get()->GetLogManager()->Log( _T("GIT COMMIT") );
     }
 }
 
-void GitRevertOp::execute(std::vector<VcsTreeItem*> paths) const
+void GitRevertOp::execute(std::vector<VcsTreeItem*>& paths) const
 {
     wxString path_string;
     std::vector<VcsTreeItem*>::const_iterator i;
 
     for(i=paths.begin(); i!= paths.end(); i++)
     {
-        path_string += _(" ") + (*i)->GetName();
+        wxString relativeFilename = (*i)->GetRelativeName(GitRoot());
+        if(relativeFilename.length() == 0)
+        {
+            continue;
+        }
+        path_string += _(" ") + relativeFilename;
     }
 
     wxString cwd = wxGetCwd();
@@ -270,7 +318,7 @@ void git::ExecuteCommand(const wxString& Command, wxArrayString& Output )
 {
     wxArrayString Errors;
 
-    wxSetWorkingDirectory(wxPathOnly(m_project));
+    wxSetWorkingDirectory(m_GitRoot);
     const long pid = wxExecute(Command, Output, Errors, wxEXEC_SYNC);
 
     if (pid==-1)
@@ -293,9 +341,15 @@ void GitOp::DumpOutput(const wxArrayString& Output) const
 {
     unsigned int i;
 
+    return;
     Manager::Get()->GetLogManager()->Log( _T("Output") );
     for(i=0; i<Output.Count(); i++)
     {
         Manager::Get()->GetLogManager()->Log( Output[i] );
     }
+}
+
+const wxString& GitOp::GitRoot(void) const
+{
+    return m_vcs.m_GitRoot;
 }

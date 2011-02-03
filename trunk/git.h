@@ -14,6 +14,7 @@ class GitOp : public VcsFileOp
     protected:
         void VcsExecute(const wxString&, wxArrayString& ) const;
         void DumpOutput(const wxArrayString& ) const;
+        const wxString& GitRoot(void) const;
 
         git& m_vcs;
 
@@ -25,33 +26,32 @@ class GitUpdateOp : public GitOp
 {
     public:
         GitUpdateOp(git& vcs) : GitOp(vcs) {}
-        virtual void execute(std::vector<VcsTreeItem*>) const;
+        virtual void execute(std::vector<VcsTreeItem*>&) const;
 
     private:
-        bool IsOutsideRepo(const wxString& file) const;
         bool SetStatusFromOutput(VcsTreeItem* Item, wxArrayString& Output) const;
-        void ApplyStatus(std::vector<VcsTreeItem*>, wxArrayString) const;
+        void ApplyStatus(std::vector<VcsTreeItem*>&, wxArrayString&) const;
 };
 
 class GitAddOp : public GitOp
 {
     public:
         GitAddOp(git& vcs) : GitOp(vcs) {}
-        virtual void execute(std::vector<VcsTreeItem*>) const;
+        virtual void execute(std::vector<VcsTreeItem*>&) const;
 };
 
 class GitRemoveOp : public GitOp
 {
     public:
         GitRemoveOp(git& vcs) : GitOp(vcs) {}
-        virtual void execute(std::vector<VcsTreeItem*>) const;
+        virtual void execute(std::vector<VcsTreeItem*>&) const;
 };
 
 class GitCommitOp : public GitOp
 {
     public:
         GitCommitOp(git& vcs) : GitOp(vcs) {}
-        virtual void execute(std::vector<VcsTreeItem*>) const;
+        virtual void execute(std::vector<VcsTreeItem*>&) const;
     private:
         wxString BuildCommitCmd(const wxString& CommitMsg, const wxArrayString& ItemList) const;
         void AddCommitItem(wxArrayString& ItemList, VcsTreeItem* FileItem) const;
@@ -61,20 +61,22 @@ class GitRevertOp : public GitOp
 {
     public:
         GitRevertOp(git& vcs) : GitOp(vcs) {}
-        virtual void execute(std::vector<VcsTreeItem*>) const;
+        virtual void execute(std::vector<VcsTreeItem*>&) const;
 };
 
 class git : public IVersionControlSystem
 {
     public:
+        static bool IsGitRepo(const wxString& project);
         git(const wxString& project);
         virtual ~git();
 
-        virtual bool move(std::vector<VcsTreeItem*>) {}
+        virtual bool move(std::vector<VcsTreeItem*>&) {}
 
     protected:
         friend class GitOp;
         void ExecuteCommand(const wxString&, wxArrayString& );
+        const wxString m_GitRoot;
 
     private:
         GitUpdateOp m_GitUpdate;

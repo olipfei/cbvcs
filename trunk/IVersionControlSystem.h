@@ -24,7 +24,7 @@ class IVersionControlSystem
         const VcsFileOp& UpdateOp;
         const VcsFileOp& AddOp;
         const VcsFileOp& RemoveOp;
-        virtual bool move(std::vector<VcsTreeItem*>) = 0;
+        virtual bool move(std::vector<VcsTreeItem*>&) = 0;
         const VcsFileOp& CommitOp;
         const VcsFileOp& RevertOp;
 

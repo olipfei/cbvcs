@@ -43,6 +43,8 @@
 		<Unit filename="git.cpp" />
 		<Unit filename="git.h" />
 		<Unit filename="manifest.xml" />
+		<Unit filename="vcsfactory.cpp" />
+		<Unit filename="vcsfactory.h" />
 		<Unit filename="wxsmith/CommitMsgDialog.wxs" />
 		<Extensions>
 			<code_completion />

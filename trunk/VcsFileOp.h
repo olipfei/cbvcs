@@ -10,7 +10,7 @@ class VcsFileOp
     public:
         VcsFileOp() {}
         virtual ~VcsFileOp() {}
-        virtual void execute(std::vector<VcsTreeItem*>) const = 0;
+        virtual void execute(std::vector<VcsTreeItem*>&) const = 0;
 };
 
 #endif // VCSFILEOP_H
