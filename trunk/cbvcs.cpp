@@ -9,8 +9,9 @@
 #include "cbvcs.h"
 #include "IVersionControlSystem.h"
 #include "VcsFileItem.h"
-#include "VcsProject.h"
 #include "vcsfactory.h"
+#include "treeitemvector.h"
+#include "vcsprojecttracker.h"
 
 // Register the plugin with Code::Blocks.
 // We are using an anonymous namespace so we don't litter the global one.
@@ -66,6 +67,7 @@ void cbvcs::OnAttach()
     // (see: does not need) this plugin...
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_OPEN, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnProjectOpen));
     Manager::Get()->RegisterEventSink(cbEVT_PROJECT_CLOSE, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnProjectClose));
+    Manager::Get()->RegisterEventSink(cbEVT_PROJECT_SAVE, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnProjectSave));
     Manager::Get()->RegisterEventSink(cbEVT_EDITOR_SAVE, new cbEventFunctor<cbvcs, CodeBlocksEvent>(this, &cbvcs::OnEditorSave));
 }
 
@@ -212,7 +214,7 @@ bool cbvcs::BuildToolBar(wxToolBar* toolBar)
     return false;
 }
 
-IVersionControlSystem* cbvcs::GetVcsInstance(const FileTreeData *data)
+vcsProjectTracker* cbvcs::GetVcsInstance(const FileTreeData *data)
 {
     if ( !data )
         return 0;
@@ -225,33 +227,33 @@ IVersionControlSystem* cbvcs::GetVcsInstance(const FileTreeData *data)
 
     const wxString& prj_file = prj->GetFilename();
 
-    std::map<const wxString, IVersionControlSystem*>::const_iterator it
+    std::map<const wxString, vcsProjectTracker*>::const_iterator it
         = m_ProjectVcs.find(prj_file);
 
+    vcsProjectTracker* vcsTracker;
     if(it == m_ProjectVcs.end())
     {
         return 0;
     }
     else
     {
-        return (*it).second;
+        vcsTracker = (*it).second;
     }
+
+    return vcsTracker;
 }
 
-VcsTreeItem* cbvcs::GetFileItem(const wxTreeCtrl& tree, const wxTreeItemId& treeItem)
+void cbvcs::GetFileItem(TreeItemVector& treeVector, const wxTreeCtrl& tree, const wxTreeItemId& treeItem)
 {
     FileTreeData* ftd = static_cast<FileTreeData*>( tree.GetItemData( treeItem ) );
 
     if(ftd->GetKind() == FileTreeData::ftdkFile)
     {
-        ProjectFile* path = ftd->GetProjectFile();
-        return new VcsFileItem(path);
+        treeVector.CreateFileItem(ftd->GetProjectFile());
     }
-
-    return 0;
 }
 
-void cbvcs::GetDescendents(std::vector<VcsTreeItem*>& dst, const wxTreeCtrl& tree, const wxTreeItemId& start)
+void cbvcs::GetDescendents(TreeItemVector& treeVector, const wxTreeCtrl& tree, const wxTreeItemId& start)
 {
     wxTreeItemIdValue cookie;
 
@@ -265,21 +267,17 @@ void cbvcs::GetDescendents(std::vector<VcsTreeItem*>& dst, const wxTreeCtrl& tre
     {
         if(tree.ItemHasChildren(child))
         {
-            GetDescendents(dst, tree, child);
+            GetDescendents(treeVector, tree, child);
         }
         else
         {
-            VcsTreeItem* vcsItem = GetFileItem(tree, child);
-            if(vcsItem != 0)
-            {
-                dst.push_back(vcsItem);
-            }
+            GetFileItem(treeVector, tree, child);
         }
         child = tree.GetNextChild(start, cookie);
     }
 }
 
-IVersionControlSystem* cbvcs::GetSelectedItemInfo(const wxTreeCtrl*& tree, wxTreeItemId& selItem, const FileTreeData*& ftData)
+vcsProjectTracker* cbvcs::GetSelectedItemInfo(const wxTreeCtrl*& tree, wxTreeItemId& selItem, const FileTreeData*& ftData)
 {
     tree = Manager::Get()->GetProjectManager()->GetTree();
     if(!tree)
@@ -303,55 +301,43 @@ IVersionControlSystem* cbvcs::GetSelectedItemInfo(const wxTreeCtrl*& tree, wxTre
     return GetVcsInstance(ftData);
 }
 
-void cbvcs::DeleteTreeItems(std::vector<VcsTreeItem*>& TreeItems)
-{
-    while(TreeItems.size())
-    {
-        VcsTreeItem* Item = TreeItems.back();
-        TreeItems.pop_back();
-        delete Item;
-    }
-}
-
-void cbvcs::PerformGroupAction(IVersionControlSystem& vcs,
+void cbvcs::PerformGroupAction(vcsProjectTracker& prjTracker,
                                const VcsFileOp& fileOp,
                                const wxTreeCtrl& tree,
                                wxTreeItemId& treeItem,
                                const FileTreeData& data)
 {
-    std::vector<VcsTreeItem*>files;
+    TreeItemVector files;
 
     if(data.GetKind() == FileTreeData::ftdkFile)
     {
         ProjectFile* f = data.GetProjectFile();
         if ( f )
         {
-            VcsFileItem* vcsItem = new VcsFileItem(f);
-            files.push_back(vcsItem);
-            fileOp.execute(files);
+            files.CreateFileItem(f);
+            fileOp.execute(files.GetVector());
         }
     }
     else if(data.GetKind() == FileTreeData::ftdkFolder)
     {
         GetDescendents(files, tree, treeItem);
-        fileOp.execute(files);
+        fileOp.execute(files.GetVector());
     }
     else if(data.GetKind() == FileTreeData::ftdkProject)
     {
         cbProject* prj = data.GetProject();
-        // XXX FileNameFromPath is obsolete
-        VcsProject* vcsItem = new VcsProject(wxFileNameFromPath(prj->GetFilename()), Item_Modified);
-        files.push_back(vcsItem);
+
+        files.CreateProjectItem(prj->GetFilename(), prjTracker.GetProjectState());
         GetDescendents(files, tree, treeItem);
-        fileOp.execute(files);
+        fileOp.execute(files.GetVector());
     }
     else
     {
         return;
     }
 
-    vcs.UpdateOp.execute(files);
-    DeleteTreeItems(files);
+    IVersionControlSystem& vcs = prjTracker.GetVcs();
+    vcs.UpdateOp.execute(files.GetVector());
 }
 
 void cbvcs::OnAdd( wxCommandEvent& /*event*/ )
@@ -359,15 +345,15 @@ void cbvcs::OnAdd( wxCommandEvent& /*event*/ )
     const wxTreeCtrl* tree;
     wxTreeItemId treeItem;
     const FileTreeData* itemData;
-    IVersionControlSystem* vcs;
+    vcsProjectTracker* prjTracker;
 
-    vcs = GetSelectedItemInfo(tree, treeItem, itemData);
-    if(!vcs)
+    prjTracker = GetSelectedItemInfo(tree, treeItem, itemData);
+    if(!prjTracker)
     {
         return;
     }
 
-    PerformGroupAction(*vcs, vcs->AddOp, *tree, treeItem, *itemData);
+    PerformGroupAction(*prjTracker, prjTracker->GetVcs().AddOp, *tree, treeItem, *itemData);
 }
 
 void cbvcs::OnRemove( wxCommandEvent& /*event*/ )
@@ -375,15 +361,15 @@ void cbvcs::OnRemove( wxCommandEvent& /*event*/ )
     const wxTreeCtrl* tree;
     wxTreeItemId treeItem;
     const FileTreeData* itemData;
-    IVersionControlSystem* vcs;
+    vcsProjectTracker* prjTracker;
 
-    vcs = GetSelectedItemInfo(tree, treeItem, itemData);
-    if(!vcs)
+    prjTracker = GetSelectedItemInfo(tree, treeItem, itemData);
+    if(!prjTracker)
     {
         return;
     }
 
-    PerformGroupAction(*vcs, vcs->RemoveOp, *tree, treeItem, *itemData);
+    PerformGroupAction(*prjTracker, prjTracker->GetVcs().RemoveOp, *tree, treeItem, *itemData);
 }
 
 void cbvcs::OnCommit( wxCommandEvent& /*event*/ )
@@ -391,15 +377,15 @@ void cbvcs::OnCommit( wxCommandEvent& /*event*/ )
     const wxTreeCtrl* tree;
     wxTreeItemId treeItem;
     const FileTreeData* itemData;
-    IVersionControlSystem* vcs;
+    vcsProjectTracker* prjTracker;
 
-    vcs = GetSelectedItemInfo(tree, treeItem, itemData);
-    if(!vcs)
+    prjTracker = GetSelectedItemInfo(tree, treeItem, itemData);
+    if(!prjTracker)
     {
         return;
     }
 
-    PerformGroupAction(*vcs, vcs->CommitOp, *tree, treeItem, *itemData);
+    PerformGroupAction(*prjTracker, prjTracker->GetVcs().CommitOp, *tree, treeItem, *itemData);
 }
 
 void cbvcs::OnRevert( wxCommandEvent& /*event*/ )
@@ -407,15 +393,15 @@ void cbvcs::OnRevert( wxCommandEvent& /*event*/ )
     const wxTreeCtrl* tree;
     wxTreeItemId treeItem;
     const FileTreeData* itemData;
-    IVersionControlSystem* vcs;
+    vcsProjectTracker* prjTracker;
 
-    vcs = GetSelectedItemInfo(tree, treeItem, itemData);
-    if(!vcs)
+    prjTracker = GetSelectedItemInfo(tree, treeItem, itemData);
+    if(!prjTracker)
     {
         return;
     }
 
-    PerformGroupAction(*vcs, vcs->RevertOp, *tree, treeItem, *itemData);
+    PerformGroupAction(*prjTracker, prjTracker->GetVcs().RevertOp, *tree, treeItem, *itemData);
 }
 
 void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
@@ -427,38 +413,41 @@ void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
         return;
     }
 
-    IVersionControlSystem* vcs;
-    const wxString& prj_file = prj->GetFilename();
+    const wxString prjFilename = prj->GetFilename();
 
-    std::map<const wxString, IVersionControlSystem*>::const_iterator it
-        = m_ProjectVcs.find(prj_file);
+    std::map<const wxString, vcsProjectTracker*>::const_iterator it
+        = m_ProjectVcs.find(prjFilename);
+
+    IVersionControlSystem* vcs;
+    vcsProjectTracker* prjTracker;
 
     if(it == m_ProjectVcs.end())
     {
-        vcs = VcsFactory::GetVcs(prj_file);
+        vcs = VcsFactory::GetVcs(prjFilename);
         if(!vcs)
         {
             Manager::Get()->GetLogManager()->Log( _("cbvcs: Project not controlled") );
             return;
         }
-        m_ProjectVcs[prj_file] = vcs;
+        prjTracker = new vcsProjectTracker(vcs, prjFilename);
+        m_ProjectVcs[prjFilename] = prjTracker;
     }
     else
     {
-        vcs = (*it).second;
+        prjTracker = (*it).second;
+        vcs = &prjTracker->GetVcs();
     }
 
-    std::vector<VcsTreeItem*>files;
+    TreeItemVector files;
+    files.CreateProjectItem(prjFilename, prjTracker->GetProjectState());
 
     for ( int i = 0; i < prj->GetFilesCount(); ++i )
     {
         ProjectFile* pf = prj->GetFile( i );
-        VcsFileItem* vcsItem = new VcsFileItem(pf);
-        files.push_back(vcsItem);
+        files.CreateFileItem(pf);
     }
 
-    vcs->UpdateOp.execute(files);
-    DeleteTreeItems(files);
+    vcs->UpdateOp.execute(files.GetVector());
 }
 
 void cbvcs::OnProjectClose( CodeBlocksEvent& event )
@@ -470,9 +459,9 @@ void cbvcs::OnProjectClose( CodeBlocksEvent& event )
         return;
     }
 
-    const wxString& prj_file = prj->GetFilename();
+    const wxString prj_file = prj->GetFilename();
 
-    std::map<const wxString, IVersionControlSystem*>::iterator it
+    std::map<const wxString, vcsProjectTracker*>::iterator it
         = m_ProjectVcs.find(prj_file);
 
     if(it == m_ProjectVcs.end())
@@ -481,10 +470,39 @@ void cbvcs::OnProjectClose( CodeBlocksEvent& event )
     }
     else
     {
-        IVersionControlSystem* vcs = (*it).second;
-        delete vcs;
+        vcsProjectTracker* prjTracker = (*it).second;
+        delete prjTracker;
         m_ProjectVcs.erase(it);
         Manager::Get()->GetLogManager()->Log( _("vcs successful removal") );
+    }
+}
+
+void cbvcs::OnProjectSave( CodeBlocksEvent& event )
+{
+    cbProject* prj = event.GetProject();
+
+    if(!prj)
+    {
+        Manager::Get()->GetLogManager()->Log( _("null") );
+        return;
+    }
+
+    const wxString prjFilename = prj->GetFilename();
+
+    std::map<const wxString, vcsProjectTracker*>::iterator it
+        = m_ProjectVcs.find(prjFilename);
+
+    if(it == m_ProjectVcs.end())
+    {
+        Manager::Get()->GetLogManager()->Log( _("Couldn't find project " + prjFilename) );
+        return;
+    }
+    else
+    {
+        vcsProjectTracker* prjTracker = (*it).second;
+        TreeItemVector files;
+        files.CreateProjectItem(prjFilename, prjTracker->GetProjectState());
+        prjTracker->GetVcs().UpdateOp.execute(files.GetVector());
     }
 }
 
@@ -516,7 +534,7 @@ void cbvcs::OnEditorSave( CodeBlocksEvent& event )
 
     const wxString& PrjFilename = prj->GetFilename();
 
-    std::map<const wxString, IVersionControlSystem*>::iterator it
+    std::map<const wxString, vcsProjectTracker*>::iterator it
         = m_ProjectVcs.find(PrjFilename);
 
     if(it == m_ProjectVcs.end())
@@ -526,10 +544,10 @@ void cbvcs::OnEditorSave( CodeBlocksEvent& event )
     else
     {
         std::vector<VcsTreeItem*>UpdateList;
-        IVersionControlSystem* vcs = (*it).second;
+        vcsProjectTracker* prjTracker = (*it).second;
 
         VcsFileItem vcsItem(SavedFile);
         UpdateList.push_back(&vcsItem);
-        vcs->UpdateOp.execute(UpdateList);
+        prjTracker->GetVcs().UpdateOp.execute(UpdateList);
     }
 }

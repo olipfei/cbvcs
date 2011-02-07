@@ -1,9 +1,11 @@
+#include <logmanager.h>
 #include "VcsProject.h"
 
-VcsProject::VcsProject(wxString Name, ItemState PrjState) :
-    VcsTreeItem(Name, PrjState)
+VcsProject::VcsProject(wxString Name, ItemState& prjState) :
+    VcsTreeItem(Name, prjState),
+    m_PrjState(prjState)
 {
-    //ctor
+    Manager::Get()->GetLogManager()->Log( _("Project Item:") + Name );
 }
 
 VcsProject::~VcsProject()
@@ -13,5 +15,5 @@ VcsProject::~VcsProject()
 
 /*virtual*/ void VcsProject::VisualiseState() const
 {
-
+    m_PrjState = GetState();
 }

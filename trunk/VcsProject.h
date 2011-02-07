@@ -8,13 +8,14 @@ class VcsProject : public VcsTreeItem
 {
     public:
         /** Default constructor */
-        VcsProject(wxString Name, ItemState PrjState);
+        VcsProject(wxString Name, ItemState& prjState);
         /** Default destructor */
         virtual ~VcsProject();
 
         virtual void VisualiseState() const;
     protected:
     private:
+        ItemState& m_PrjState;
 };
 
 #endif // VCSPROJECT_H

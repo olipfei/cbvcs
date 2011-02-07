@@ -115,6 +115,7 @@ void GitUpdateOp::ApplyStatus(std::vector<VcsTreeItem*>& proj_files, wxArrayStri
         relativeFilename = pf->GetRelativeName(GitRoot());
         if(relativeFilename.length() == 0)
         {
+            Manager::Get()->GetLogManager()->Log( _("reject:") + relativeFilename );
             continue;
         }
 

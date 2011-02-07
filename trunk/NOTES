@@ -1,12 +1,10 @@
 TODO
 ----
-Project status (currently always modified)
 Rename Files
     added
     modified
     uptodate
     tracked-missing
-On project Save
 Revert
 Refresh
 Branching
@@ -31,6 +29,8 @@ Startup memory leak
 Ignore non-controlled projects
 Don't assume .git is where project.cbp is
     work out where repo root is using git rev-parse --show-toplevel
+Project status tracking
+On project Save
 
 
 ---------------------------------------------

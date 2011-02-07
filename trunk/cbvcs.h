@@ -20,9 +20,10 @@
 #include <map>
 #include <cbplugin.h> // for "class cbPlugin"
 
-class IVersionControlSystem;
 class VcsFileOp;
 class VcsTreeItem;
+class TreeItemVector;
+class vcsProjectTracker;
 
 class cbvcs : public cbPlugin
 {
@@ -125,23 +126,23 @@ class cbvcs : public cbPlugin
     private:
         DECLARE_EVENT_TABLE();
 
-        std::map<const wxString, IVersionControlSystem*> m_ProjectVcs;
+        std::map<const wxString, vcsProjectTracker*> m_ProjectVcs;
 
-        IVersionControlSystem* GetVcsInstance(const FileTreeData*);
-        VcsTreeItem* GetFileItem(const wxTreeCtrl&, const wxTreeItemId&);
-        void GetDescendents(std::vector<VcsTreeItem*>&, const wxTreeCtrl&, const wxTreeItemId&);
-        IVersionControlSystem* GetSelectedItemInfo(const wxTreeCtrl*&, wxTreeItemId& , const FileTreeData*&);
+        vcsProjectTracker* GetVcsInstance(const FileTreeData*);
+        void GetFileItem(TreeItemVector& treeVector, const wxTreeCtrl&, const wxTreeItemId&);
+        void GetDescendents(TreeItemVector& treeVector, const wxTreeCtrl&, const wxTreeItemId&);
+        vcsProjectTracker* GetSelectedItemInfo(const wxTreeCtrl*&, wxTreeItemId& , const FileTreeData*&);
         void CreateProjectMenu(wxMenu* menu, const FileTreeData* data);
         void CreateFileMenu(wxMenu* menu, const FileTreeData* data);
         void CreateFolderMenu(wxMenu* menu);
 
-        void PerformGroupAction(IVersionControlSystem&, const VcsFileOp&, const wxTreeCtrl&, wxTreeItemId&, const FileTreeData&);
-        void DeleteTreeItems(std::vector<VcsTreeItem*>&);
+        void PerformGroupAction(vcsProjectTracker&, const VcsFileOp&, const wxTreeCtrl&, wxTreeItemId&, const FileTreeData&);
         void OnAdd( wxCommandEvent& event );
         void OnRemove( wxCommandEvent& event );
         void OnCommit( wxCommandEvent& event );
         void OnRevert( wxCommandEvent& event );
         void OnProjectOpen( CodeBlocksEvent& );
+        void OnProjectSave( CodeBlocksEvent& );
         void OnProjectClose( CodeBlocksEvent& );
         void OnEditorSave( CodeBlocksEvent& );
 };
