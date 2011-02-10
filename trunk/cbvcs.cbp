@@ -50,6 +50,8 @@
 		<Unit filename="vcsfactory.h" />
 		<Unit filename="vcsprojecttracker.cpp" />
 		<Unit filename="vcsprojecttracker.h" />
+		<Unit filename="vcstrackermap.cpp" />
+		<Unit filename="vcstrackermap.h" />
 		<Unit filename="wxsmith/CommitMsgDialog.wxs" />
 		<Extensions>
 			<code_completion />

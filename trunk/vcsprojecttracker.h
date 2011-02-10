@@ -28,7 +28,7 @@ class vcsProjectTracker : private CopyProtector
         /** Access m_Vcs
          * \return The current value of m_Vcs
          */
-        IVersionControlSystem& GetVcs() { return m_Vcs; }
+        IVersionControlSystem& GetVcs() const { return m_Vcs; }
     protected:
     private:
         ItemState m_ProjectState; //!< Member variable "m_ProjectState"

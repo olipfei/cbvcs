@@ -9,9 +9,9 @@
 #include "cbvcs.h"
 #include "IVersionControlSystem.h"
 #include "VcsFileItem.h"
-#include "vcsfactory.h"
 #include "treeitemvector.h"
 #include "vcsprojecttracker.h"
+#include "vcstrackermap.h"
 
 // Register the plugin with Code::Blocks.
 // We are using an anonymous namespace so we don't litter the global one.
@@ -227,20 +227,7 @@ vcsProjectTracker* cbvcs::GetVcsInstance(const FileTreeData *data)
 
     const wxString& prj_file = prj->GetFilename();
 
-    std::map<const wxString, vcsProjectTracker*>::const_iterator it
-        = m_ProjectVcs.find(prj_file);
-
-    vcsProjectTracker* vcsTracker;
-    if(it == m_ProjectVcs.end())
-    {
-        return 0;
-    }
-    else
-    {
-        vcsTracker = (*it).second;
-    }
-
-    return vcsTracker;
+    return m_ProjectTrackers.GetTracker(prj_file);
 }
 
 void cbvcs::GetFileItem(TreeItemVector& treeVector, const wxTreeCtrl& tree, const wxTreeItemId& treeItem)
@@ -415,28 +402,21 @@ void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
 
     const wxString prjFilename = prj->GetFilename();
 
-    std::map<const wxString, vcsProjectTracker*>::const_iterator it
-        = m_ProjectVcs.find(prjFilename);
+    if(!m_ProjectTrackers.CreateTracker(prjFilename))
+    {
+        return;
+    }
 
-    IVersionControlSystem* vcs;
     vcsProjectTracker* prjTracker;
+    prjTracker = m_ProjectTrackers.GetTracker(prjFilename);
 
-    if(it == m_ProjectVcs.end())
+    if(!prjTracker)
     {
-        vcs = VcsFactory::GetVcs(prjFilename);
-        if(!vcs)
-        {
-            Manager::Get()->GetLogManager()->Log( _("cbvcs: Project not controlled") );
-            return;
-        }
-        prjTracker = new vcsProjectTracker(vcs, prjFilename);
-        m_ProjectVcs[prjFilename] = prjTracker;
+        // Impossible really cos we just created it!
+        return;
     }
-    else
-    {
-        prjTracker = (*it).second;
-        vcs = &prjTracker->GetVcs();
-    }
+
+    IVersionControlSystem& vcs = prjTracker->GetVcs();
 
     TreeItemVector files;
     files.CreateProjectItem(prjFilename, prjTracker->GetProjectState());
@@ -447,7 +427,7 @@ void cbvcs::OnProjectOpen( CodeBlocksEvent& event )
         files.CreateFileItem(pf);
     }
 
-    vcs->UpdateOp.execute(files.GetVector());
+    vcs.UpdateOp.execute(files.GetVector());
 }
 
 void cbvcs::OnProjectClose( CodeBlocksEvent& event )
@@ -460,21 +440,7 @@ void cbvcs::OnProjectClose( CodeBlocksEvent& event )
     }
 
     const wxString prj_file = prj->GetFilename();
-
-    std::map<const wxString, vcsProjectTracker*>::iterator it
-        = m_ProjectVcs.find(prj_file);
-
-    if(it == m_ProjectVcs.end())
-    {
-        return;
-    }
-    else
-    {
-        vcsProjectTracker* prjTracker = (*it).second;
-        delete prjTracker;
-        m_ProjectVcs.erase(it);
-        Manager::Get()->GetLogManager()->Log( _("vcs successful removal") );
-    }
+    m_ProjectTrackers.RemoveTracker(prj_file);
 }
 
 void cbvcs::OnProjectSave( CodeBlocksEvent& event )
@@ -489,21 +455,15 @@ void cbvcs::OnProjectSave( CodeBlocksEvent& event )
 
     const wxString prjFilename = prj->GetFilename();
 
-    std::map<const wxString, vcsProjectTracker*>::iterator it
-        = m_ProjectVcs.find(prjFilename);
-
-    if(it == m_ProjectVcs.end())
+    vcsProjectTracker* prjTracker = m_ProjectTrackers.GetTracker(prjFilename);
+    if(!prjTracker)
     {
-        Manager::Get()->GetLogManager()->Log( _("Couldn't find project " + prjFilename) );
+        // uncontrolled project
         return;
     }
-    else
-    {
-        vcsProjectTracker* prjTracker = (*it).second;
-        TreeItemVector files;
-        files.CreateProjectItem(prjFilename, prjTracker->GetProjectState());
-        prjTracker->GetVcs().UpdateOp.execute(files.GetVector());
-    }
+    TreeItemVector files;
+    files.CreateProjectItem(prjFilename, prjTracker->GetProjectState());
+    prjTracker->GetVcs().UpdateOp.execute(files.GetVector());
 }
 
 void cbvcs::OnEditorSave( CodeBlocksEvent& event )
@@ -532,22 +492,18 @@ void cbvcs::OnEditorSave( CodeBlocksEvent& event )
         return;
     }
 
-    const wxString& PrjFilename = prj->GetFilename();
+    const wxString& prjFilename = prj->GetFilename();
 
-    std::map<const wxString, vcsProjectTracker*>::iterator it
-        = m_ProjectVcs.find(PrjFilename);
-
-    if(it == m_ProjectVcs.end())
+    vcsProjectTracker* prjTracker = m_ProjectTrackers.GetTracker(prjFilename);
+    if(!prjTracker)
     {
+        // Project not tracked
         return;
     }
-    else
-    {
-        std::vector<VcsTreeItem*>UpdateList;
-        vcsProjectTracker* prjTracker = (*it).second;
 
-        VcsFileItem vcsItem(SavedFile);
-        UpdateList.push_back(&vcsItem);
-        prjTracker->GetVcs().UpdateOp.execute(UpdateList);
-    }
+    std::vector<VcsTreeItem*>UpdateList;
+
+    VcsFileItem vcsItem(SavedFile);
+    UpdateList.push_back(&vcsItem);
+    prjTracker->GetVcs().UpdateOp.execute(UpdateList);
 }

@@ -20,6 +20,8 @@
 #include <map>
 #include <cbplugin.h> // for "class cbPlugin"
 
+#include "vcstrackermap.h"
+
 class VcsFileOp;
 class VcsTreeItem;
 class TreeItemVector;
@@ -126,7 +128,7 @@ class cbvcs : public cbPlugin
     private:
         DECLARE_EVENT_TABLE();
 
-        std::map<const wxString, vcsProjectTracker*> m_ProjectVcs;
+        VcsTrackerMap m_ProjectTrackers;
 
         vcsProjectTracker* GetVcsInstance(const FileTreeData*);
         void GetFileItem(TreeItemVector& treeVector, const wxTreeCtrl&, const wxTreeItemId&);
