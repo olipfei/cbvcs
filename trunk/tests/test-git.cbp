@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="test-git" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/test-git" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="`pkg-config --cflags codeblocks`" />
+					<Add option="`wx-config --cflags`" />
+					<Add directory="/home/dushara/src/cbvcs/tests/.." />
+				</Compiler>
+				<Linker>
+					<Add option="`pkg-config --libs codeblocks`" />
+					<Add option="`wx-config --libs`" />
+					<Add library="../UnitTest++/libUnitTest++.a" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/test-git" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="`pkg-config --cflags codeblocks`" />
+					<Add option="`wx-config --cflags`" />
+					<Add option="-fprofile-arcs" />
+					<Add option="-ftest-coverage" />
+					<Add directory="/home/dushara/src/cbvcs/tests/.." />
+				</Compiler>
+				<Linker>
+					<Add option="`pkg-config --libs codeblocks`" />
+					<Add option="`wx-config --libs`" />
+					<Add option="-fprofile-arcs" />
+					<Add library="../UnitTest++/libUnitTest++.a" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="$(PROJECT_DIR)/lcov-1.9/bin/lcov -c -i -d . -o app_base.info" />
+					<Add after="$(TARGET_OUTPUT_FILE)" />
+					<Add after="$(PROJECT_DIR)/lcov-1.9/bin/lcov -c -d . -o app_test.info" />
+					<Add after="$(PROJECT_DIR)/lcov-1.9/bin/lcov -a app_base.info -a app_test.info   -o app_total.info" />
+					<Add after="mkdir -p html" />
+					<Add after="$(PROJECT_DIR)/lcov-1.9/bin/genhtml -o html app_test.info" />
+					<Mode after="always" />
+				</ExtraCommands>
+			</Target>
+			<Target title="Execute">
+				<Option output="bin/Execute/test-git" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Execute/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="`pkg-config --cflags codeblocks`" />
+					<Add option="`wx-config --cflags`" />
+					<Add directory="/home/dushara/src/cbvcs/tests/.." />
+				</Compiler>
+				<Linker>
+					<Add option="`pkg-config --libs codeblocks`" />
+					<Add option="`wx-config --libs`" />
+					<Add library="../UnitTest++/libUnitTest++.a" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="$(TARGET_OUTPUT_FILE)" />
+					<Mode after="always" />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="../IVersionControlSystem.cpp" />
+		<Unit filename="../VcsFileOp.h" />
+		<Unit filename="../VcsTreeItem.cpp" />
+		<Unit filename="../git-update.h" />
+		<Unit filename="../git.cpp" />
+		<Unit filename="../git.h" />
+		<Unit filename="../gitaddop.h" />
+		<Unit filename="../gitcommitop.h" />
+		<Unit filename="../gitop.cpp" />
+		<Unit filename="../gitop.h" />
+		<Unit filename="../gitremoveop.h" />
+		<Unit filename="../gitrevertop.h" />
+		<Unit filename="../icommandexecuter.h" />
+		<Unit filename="main.cpp" />
+		<Unit filename="stubs/git-update.cpp" />
+		<Unit filename="stubs/gitaddop.cpp" />
+		<Unit filename="stubs/gitcommitop.cpp" />
+		<Unit filename="stubs/gitremoveop.cpp" />
+		<Unit filename="stubs/gitrevertop.cpp" />
+		<Unit filename="stubs/thread.cpp" />
+		<Unit filename="test-git.cpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

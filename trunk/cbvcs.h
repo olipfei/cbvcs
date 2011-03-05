@@ -1,11 +1,20 @@
-/***************************************************************
- * Name:      cbvcs
- * Purpose:   Code::Blocks plugin
- * Author:     ()
- * Created:   2010-11-10
- * Copyright:
- * License:   GPL
- **************************************************************/
+/*  cbvcs Code::Blocks version control system plugin
+
+    Copyright (C) 2011 Dushara Jayasinghe.
+
+    cbvcs is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    cbvcs is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with cbvcs.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef CBVCS_H_INCLUDED
 #define CBVCS_H_INCLUDED
@@ -26,6 +35,7 @@ class VcsFileOp;
 class VcsTreeItem;
 class TreeItemVector;
 class vcsProjectTracker;
+class ShellUtilImpl;
 
 class cbvcs : public cbPlugin
 {
@@ -129,6 +139,7 @@ class cbvcs : public cbPlugin
         DECLARE_EVENT_TABLE();
 
         VcsTrackerMap m_ProjectTrackers;
+        class ShellUtilImpl* m_ShellUtils;
 
         vcsProjectTracker* GetVcsInstance(const FileTreeData*);
         void GetFileItem(TreeItemVector& treeVector, const wxTreeCtrl&, const wxTreeItemId&);
@@ -138,7 +149,7 @@ class cbvcs : public cbPlugin
         void CreateFileMenu(wxMenu* menu, const FileTreeData* data);
         void CreateFolderMenu(wxMenu* menu);
 
-        void PerformGroupAction(vcsProjectTracker&, const VcsFileOp&, const wxTreeCtrl&, wxTreeItemId&, const FileTreeData&);
+        void PerformGroupAction(vcsProjectTracker&, VcsFileOp&, const wxTreeCtrl&, wxTreeItemId&, const FileTreeData&);
         void OnAdd( wxCommandEvent& event );
         void OnRemove( wxCommandEvent& event );
         void OnCommit( wxCommandEvent& event );

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="UnitTest++" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="libUnitTest++" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/Debug/" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+		</Build>
+		<Unit filename="AssertException.cpp" />
+		<Unit filename="AssertException.h" />
+		<Unit filename="CheckMacros.h" />
+		<Unit filename="Checks.cpp" />
+		<Unit filename="Checks.h" />
+		<Unit filename="Config.h" />
+		<Unit filename="CurrentTest.cpp" />
+		<Unit filename="CurrentTest.h" />
+		<Unit filename="DeferredTestReporter.cpp" />
+		<Unit filename="DeferredTestReporter.h" />
+		<Unit filename="DeferredTestResult.cpp" />
+		<Unit filename="DeferredTestResult.h" />
+		<Unit filename="ExecuteTest.h" />
+		<Unit filename="MemoryOutStream.cpp" />
+		<Unit filename="MemoryOutStream.h" />
+		<Unit filename="Posix/SignalTranslator.cpp" />
+		<Unit filename="Posix/SignalTranslator.h" />
+		<Unit filename="Posix/TimeHelpers.cpp" />
+		<Unit filename="Posix/TimeHelpers.h" />
+		<Unit filename="ReportAssert.cpp" />
+		<Unit filename="ReportAssert.h" />
+		<Unit filename="Test.cpp" />
+		<Unit filename="Test.h" />
+		<Unit filename="TestDetails.cpp" />
+		<Unit filename="TestDetails.h" />
+		<Unit filename="TestList.cpp" />
+		<Unit filename="TestList.h" />
+		<Unit filename="TestMacros.h" />
+		<Unit filename="TestReporter.cpp" />
+		<Unit filename="TestReporter.h" />
+		<Unit filename="TestReporterStdout.cpp" />
+		<Unit filename="TestReporterStdout.h" />
+		<Unit filename="TestResults.cpp" />
+		<Unit filename="TestResults.h" />
+		<Unit filename="TestRunner.cpp" />
+		<Unit filename="TestRunner.h" />
+		<Unit filename="TestSuite.h" />
+		<Unit filename="TimeConstraint.cpp" />
+		<Unit filename="TimeConstraint.h" />
+		<Unit filename="TimeHelpers.h" />
+		<Unit filename="UnitTest++.h" />
+		<Unit filename="XmlTestReporter.cpp" />
+		<Unit filename="XmlTestReporter.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

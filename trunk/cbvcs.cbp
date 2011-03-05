@@ -6,7 +6,8 @@
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
-			<Target title="default">
+			<Target title="Linux">
+				<Option platforms="Unix;Mac;" />
 				<Option output="cbvcs" prefix_auto="1" extension_auto="1" />
 				<Option type="3" />
 				<Option compiler="gcc" />
@@ -25,7 +26,62 @@
 					<Add after="zip -j9 cbvcs.cbplugin cbvcs.so cbvcs.zip" />
 				</ExtraCommands>
 			</Target>
+			<Target title="Win32">
+				<Option platforms="Windows;" />
+				<Option output="..\..\..\devel\share\CodeBlocks\plugins\cbvcs" prefix_auto="1" extension_auto="1" />
+				<Option object_output="..\..\..\.objs\plugins\contrib\cbvcs" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option parameters="--debug-log --multiple-instance --no-check-associations -ns -nd" />
+				<Option host_application="..\..\..\devel\codeblocks.exe" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-pipe" />
+					<Add option="-mthreads" />
+					<Add option="-fmessage-length=0" />
+					<Add option="-fexceptions" />
+					<Add option="-Winvalid-pch" />
+					<Add option='-include &quot;pch.h&quot;' />
+					<Add option="-DBUILDING_PLUGIN" />
+					<Add option="-DHAVE_W32API_H" />
+					<Add option="-D__WXMSW__" />
+					<Add option="-DWXUSINGDLL" />
+					<Add option="-DcbDEBUG" />
+					<Add option="-DCB_PRECOMP" />
+					<Add option="-DWX_PRECOMP" />
+					<Add option="-DwxUSE_UNICODE" />
+					<Add directory="..\..\..\include" />
+					<Add directory="..\..\..\sdk\wxscintilla\include" />
+					<Add directory="$(#wx.include)" />
+					<Add directory="$(#wx.lib)" />
+					<Add directory="$(#wx.lib)\gcc_dll$(WX_CFG)\msw$(WX_SUFFIX)" />
+				</Compiler>
+				<ResourceCompiler>
+					<Add directory="$(#wx.include)" />
+				</ResourceCompiler>
+				<Linker>
+					<Add option="-Wl,--enable-auto-import" />
+					<Add option="-mthreads" />
+					<Add library="codeblocks" />
+					<Add library="wxmsw$(WX_VERSION)$(WX_SUFFIX)" />
+					<Add directory="..\..\..\devel" />
+					<Add directory="$(#wx.lib)" />
+					<Add directory="$(#wx.lib)\gcc_dll$(WX_CFG)" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="zip -j9 ..\..\..\devel\share\codeblocks\cbvcs.zip manifest.xml" />
+					<Mode after="always" />
+				</ExtraCommands>
+				<Environment>
+					<Variable name="WX_SUFFIX" value="u" />
+					<Variable name="WX_VERSION" value="28" />
+					<Variable name="WX_CFG" value="" />
+				</Environment>
+			</Target>
 		</Build>
+		<VirtualTargets>
+			<Add alias="All" targets="Linux;Win32;" />
+		</VirtualTargets>
 		<Unit filename="CommitMsgDialog.cpp" />
 		<Unit filename="CommitMsgDialog.h" />
 		<Unit filename="IVersionControlSystem.cpp" />
@@ -33,6 +89,7 @@
 		<Unit filename="NOTES" />
 		<Unit filename="VcsFileItem.cpp" />
 		<Unit filename="VcsFileItem.h" />
+		<Unit filename="VcsFileOp.cpp" />
 		<Unit filename="VcsFileOp.h" />
 		<Unit filename="VcsProject.cpp" />
 		<Unit filename="VcsProject.h" />
@@ -41,9 +98,20 @@
 		<Unit filename="cbvcs.cpp" />
 		<Unit filename="cbvcs.h" />
 		<Unit filename="copyprotector.h" />
+		<Unit filename="git-update.cpp" />
 		<Unit filename="git.cpp" />
 		<Unit filename="git.h" />
+		<Unit filename="gitaddop.cpp" />
+		<Unit filename="gitcommitop.cpp" />
+		<Unit filename="gitop.cpp" />
+		<Unit filename="gitop.h" />
+		<Unit filename="gitremoveop.cpp" />
+		<Unit filename="gitremoveop.h" />
+		<Unit filename="gitrevertop.cpp" />
+		<Unit filename="gitrevertop.h" />
 		<Unit filename="manifest.xml" />
+		<Unit filename="shellutilimpl.cpp" />
+		<Unit filename="shellutilimpl.h" />
 		<Unit filename="treeitemvector.cpp" />
 		<Unit filename="treeitemvector.h" />
 		<Unit filename="vcsfactory.cpp" />
