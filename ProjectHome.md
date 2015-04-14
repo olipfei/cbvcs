@@ -1,0 +1,1 @@
+Currently this project supports git as the version control system, but the plan is, to eventually support any/multiple concurrent version control systems.
